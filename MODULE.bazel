@@ -1,0 +1,3 @@
+convert = use_repo_rule("//:convert.bzl", "convert")
+
+convert(name = "wasm-repro")
