@@ -1,0 +1,19 @@
+///usr/bin/env jbang "$0" "$@" ; exit $?
+
+//DEPS org.acme:toml2json:999-SNAPSHOT
+
+import org.acme.Main;
+
+public class test {
+
+    public static void main(String... args) throws Exception {
+        System.out.println("Starting");
+
+        int size = 100;
+        for (int i = 0; i < size; i++) {
+            Main.main();
+        }
+        
+        System.out.println("End");
+    }
+}
