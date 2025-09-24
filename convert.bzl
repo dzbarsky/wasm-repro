@@ -12,6 +12,14 @@ def _impl(rctx):
     print(result.output[:20] + "...")
     print("done")
 
+    print("executing")
+    result = rctx.execute_wasm(toml2json, "toml2json", input=data)
+    if result.return_code != 0:
+        fail(result.output)
+
+    print(result.output[:20] + "...")
+    print("done")
+
 convert = repository_rule(
     implementation = _impl,
 )
