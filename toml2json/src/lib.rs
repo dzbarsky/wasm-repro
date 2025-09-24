@@ -1,14 +1,7 @@
 #![no_std]
 extern crate alloc;
-
 use alloc::vec::Vec;
 use core::{arch::wasm32, slice, str};
-
-use dlmalloc::GlobalDlmalloc;
-
-// Provide a global allocator so `Vec`/`String` work on wasm32-unknown-unknown.
-#[global_allocator]
-static ALLOC: GlobalDlmalloc = GlobalDlmalloc;
 
 const PAGE_SIZE: u32 = 65536;
 
@@ -76,10 +69,18 @@ pub extern "C" fn toml2json(
         };
 
         // Serialize that value as JSON text
-        let mut out = Vec::with_capacity((input_len as usize).saturating_mul(6) / 5);
+        let mut out = Vec::with_capacity((input_len as usize).saturating_mul(8) / 5);
         let mut ser = serde_json::Serializer::new(&mut out);
-        let de =  toml::de::Deserializer::new(input_str);
-        match serde_transcode::transcode(de, &mut ser) {
+        let toml_de = match toml::de::Deserializer::parse(&input_str) {
+            Ok(toml_de) => toml_de,
+            Err(e) => {
+                let msg = alloc::format!("Parse failed: {e}");
+                write_out(msg.as_bytes(), output_ptr_ptr, output_len_ptr);
+                return 1;
+            }
+        };
+
+        match serde_transcode::transcode(toml_de, &mut ser) {
             Ok(()) => {
                 write_out(&out, output_ptr_ptr, output_len_ptr);
                 0
