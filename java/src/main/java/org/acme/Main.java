@@ -21,11 +21,13 @@ public class Main {
                 // new Toml2Json(Toml2Json.Mode.INTERPRETER);
 
         System.out.println("instantiate " + timeSince(start));
-        start = System.currentTimeMillis();
 
-        var out = toml2Json.convert(cargoLock);
-        System.out.println(new String(out, 0, 20, StandardCharsets.UTF_8) + "...");
-        System.out.println("convert time " + timeSince(start));
+        for (int i = 0; i < 5; i++) {
+            start = System.currentTimeMillis();
+            var out = toml2Json.convert(cargoLock);
+            System.out.println(new String(out, 0, 20, StandardCharsets.UTF_8) + "...");
+            System.out.println("convert time " + timeSince(start));
+        }
     }
 
     private static long timeSince(long start) {
