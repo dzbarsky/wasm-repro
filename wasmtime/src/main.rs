@@ -28,6 +28,8 @@ fn main() -> Result<()> {
     let instance = Instance::new(&mut store, &module, &[])?; // adjust imports if needed
     let t_instantiate = t1.elapsed();
 
+    println!("compile = {:?}, instantiate = {:?}", t_compile, t_instantiate);
+
     // ---- Get exports ----
     let memory: Memory = instance.get_memory(&mut store, "memory").expect("memory export");
     let allocate: TypedFunc<(i32, i32), i32> =
@@ -37,33 +39,37 @@ fn main() -> Result<()> {
 
     // ---- Prepare input and out-params ----
     let input = std::fs::read("../Cargo.lock")?;
-    let in_len = i32::try_from(input.len())?;
-    let in_ptr = allocate.call(&mut store, (in_len, 0))?;
-    memory.write(&mut store, in_ptr as usize, &input)?;
 
-    let out_ptr_ptr = allocate.call(&mut store, (4, 0))?;
-    let out_len_ptr = allocate.call(&mut store, (4, 0))?;
+    for _ in 0..5 {
+        let in_len = i32::try_from(input.len())?;
+        let in_ptr = allocate.call(&mut store, (in_len, 0))?;
+        memory.write(&mut store, in_ptr as usize, &input)?;
 
-    // ---- Measure the guest call only (execution) ----
-    let t2 = Instant::now();
-    let rc = toml2json.call(
-        &mut store,
-        (in_ptr, in_len, out_ptr_ptr, out_len_ptr),
-    )?;
-    anyhow::ensure!(rc == 0, "toml2json returned non-zero status {}", rc);
-    let t_exec = t2.elapsed();
+        let out_ptr_ptr = allocate.call(&mut store, (4, 0))?;
+        let out_len_ptr = allocate.call(&mut store, (4, 0))?;
 
-    // ---- Read results from memory (not counted in t_exec above) ----
-    let mut buf = [0u8; 4];
-    memory.read(&store, out_ptr_ptr as usize, &mut buf)?;
-    let out_ptr = i32::from_le_bytes(buf) as usize;
-    memory.read(&store, out_len_ptr as usize, &mut buf)?;
-    let out_len = i32::from_le_bytes(buf) as usize;
+        // ---- Measure the guest call only (execution) ----
+        let t2 = Instant::now();
+        let rc = toml2json.call(
+            &mut store,
+            (in_ptr, in_len, out_ptr_ptr, out_len_ptr),
+        )?;
+        anyhow::ensure!(rc == 0, "toml2json returned non-zero status {}", rc);
 
-    let mut output = vec![0u8; out_len];
-    memory.read(&store, out_ptr, &mut output)?;
-    println!("JSON: {}", String::from_utf8_lossy(&output));
+        // ---- Read results from memory (not counted in t_exec above) ----
+        let mut buf = [0u8; 4];
+        memory.read(&store, out_ptr_ptr as usize, &mut buf)?;
+        let out_ptr = i32::from_le_bytes(buf) as usize;
+        memory.read(&store, out_len_ptr as usize, &mut buf)?;
+        let out_len = i32::from_le_bytes(buf) as usize;
 
-    println!("compile = {:?}, instantiate = {:?}, execute = {:?}", t_compile, t_instantiate, t_exec);
+        let mut output = vec![0u8; out_len];
+        memory.read(&store, out_ptr, &mut output)?;
+        let t_exec = t2.elapsed();
+    	println!("execute = {:?}", t_exec);
+    }
+
+    // println!("JSON: {}", String::from_utf8_lossy(&output));
+
     Ok(())
 }
